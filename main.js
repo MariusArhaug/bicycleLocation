@@ -111,7 +111,7 @@ var normalIcon = L.Icon.extend({
    options: {
       iconUrl: "marker-icon.png",
       popupAnchor: [1, -34],
-    }
+   }
 });
 
 var activeIcon = L.Icon.extend({
