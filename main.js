@@ -1,124 +1,170 @@
 
 // - - - - - - - - - - - - MAP - - - - - - - - - - - -
+var map;
+function iniateMap() {
+   var mapOptions = {
+      center: [59.911491, 10.757933], 
+      zoom: 15
+   }
+   map = new L.map('map', mapOptions);
 
-var mapOptions = {
-   center: [59.911491, 10.757933], 
-   zoom: 13
+   var layer = new L.TileLayer('http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png');
+   map.addLayer(layer);
+
 }
-var map = new L.map('map', mapOptions);
-
-var layer = new L.TileLayer('http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png');
-map.addLayer(layer);
-
-
-// - - - - - - - - - - - - LOGO - - - - - - - - - - - -
-
-var iconOptions = {
-   iconUrl: 'orion.png',
-   iconSize: [65, 65]
-}
-var customIcon = L.icon(iconOptions);
-
 // - - - - - - - - - - - - MARKERS - - - - - - - - - - - -
-var markerOptions = {
-   title: "MyLocation",
-   clickable: true,
-   draggable: true,
-}
+
 
 
 class Station {
    constructor(name, id) {
       this.name = name;
       this.station_id = id;
+      this.active = false;
+      this.marker = undefined
+   }
+
+   isActive() {
+      return this.active
+   }
+
+   click() {
+      if (this.active == false) {
+         this.active = true;
+      }
+      else if (this.active == true) {
+         this.active = false;   
+      }
+   }
+
+   setMarker(marker) {
+      this.marker = marker;
    }
 }
 
 
-var fixedMarkerOptions = {
-   title: "Station",
-   clickable: true,
-   draggable: false
+var stationArray = []
+//1
+async function addStationInfo() {
+   let stationUrl = 'https://gbfs.urbansharing.com/oslobysykkel.no/station_information.json';
+   fetch(stationUrl)
+   .then(res => res.json())
+   .then((out) => {
+      out.data.stations
+         .forEach(station => {
+            let newStation = Object.assign(new Station, station);
+            stationArray.push(newStation);
+         })
+     
+   })
+   .catch(err => { throw err });
+  
 
 }
 
-var markerArray = []
-
-var stationUrl = 'https://gbfs.urbansharing.com/oslobysykkel.no/station_information.json';
-
-fetch(stationUrl)
-   .then(res => res.json())
-   .then((out) => {
-  	   out.data.stations.forEach(station => {
-         let newStation = Object.assign(new Station, station);
-         markerArray.push(newStation);
-         }
-      )
-      addBicycleInfo()
-      addMarkersToMap()
-   })
-   .catch(err => { throw err });
-
-function addBicycleInfo() {
+//2
+async function addBicycleInfo() {
    let bicycleAvailability = 'https://gbfs.urbansharing.com/oslobysykkel.no/station_status.json'
    fetch(bicycleAvailability)
       .then(res => res.json())
       .then((out) => {
-         out.data.stations.forEach(station => {
-            markerArray.forEach(element => {
-               if (station.station_id == element.station_id) {
-                  element = Object.assign(element, station)
-               }            
-            });
+         out.data.stations
+            .forEach(jsonData => {
+               stationArray
+               .filter(station => station.station_id == jsonData.station_id)
+               .map(station => Object.assign(station, jsonData))
          })
       })
 
       .catch(err => {throw err});
 }
 
+
 function addMarkersToMap() {
-   markerArray.forEach(station => {
+   let fixedMarkerOptions = {
+      title: "Station",
+      clickable: true,
+      draggable: false,
+      id: undefined,
+      popupAnchor: [1, -34],
+   }
+   stationArray.forEach(station => {
+         fixedMarkerOptions.id = station.station_id;
          let marker = L.marker([station.lat, station.lon], fixedMarkerOptions)
+         station.setMarker(marker);
+
          marker.bindPopup(station.name).openPopup();
-         marker.addEventListener('click', () => {showStationInfo(station)});
+         marker.addEventListener('click', () => {
+            showStationInfo(station);
+            highlightMarker(station);   
+         });
          marker.addTo(map)
       }
    );
+   stationArray.filter(station => station.num_bikes_available == 0).forEach(station => station.marker.setIcon(new emptyIcon));
+
 }
 
+// - - - - - - -
 
-/*var marker = L.marker([58.02707, 38.86224], markerOptions);
-marker.bindPopup('Hi, this is my work! :)').openPopup();
-marker.addTo(map);*/
+var normalIcon = L.Icon.extend({
+   options: {
+      iconUrl: "marker-icon.png",
+      popupAnchor: [1, -34],
+   }
+});
 
-// - - - - - - - - - - - - CIRCLE - - - - - - - - - - - -
-var circleCenter = [58.02707, 38.86224];
+var activeIcon = L.Icon.extend({
+   options: {
+      iconUrl: "marker-icon-active.png",
+      popupAnchor: [1, -34],
+   }
+});
 
-var circleOptions = {
-   color: 'green'
+var emptyIcon = L.Icon.extend({
+   options: {
+      iconUrl: "marker-icon-empty.png",
+      popupAnchor: [1, -34],
+   }
+})
+
+
+
+function highlightMarker(station) {
+      station.click();
+      if (station.isActive() == true) {
+         station.marker.setIcon(new activeIcon)
+      } else {
+         station.marker.setIcon(new normalIcon)
+      }
 }
-
-var circle = L.circle(circleCenter, 20, circleOptions);
-circle.addTo(map);
 
 
 // - - - - - - - - - - - -Station Info - - - - - - - - - - 
 
-function showStationInfo(object) {
+function showStationInfo(station) {
    let div = document.getElementById('station_info');
    div.innerText = ""
 
-   let h2 = document.createElement("h2");
+   let h2 = document.createElement("h3");
    let p1 = document.createElement("p");
    let p2 = document.createElement("p");
 
-   h2.innerText = object.name;
-   p1.innerText = "Available bikes: " + object.num_bikes_available;
-   p2.innerText = "Free spots: " + object.num_docks_available;
+   h2.innerText = station.name;
+   p1.innerText = "Available bikes: " + station.num_bikes_available;
+   p2.innerText = "Free spots: " + station.num_docks_available;
 
    div.appendChild(h2);
    div.appendChild(p1);
    div.appendChild(p2);
 
    let string = "	<h2>Name: </h2> <p>Available bikes: </p> <p>Free spots: </p>"
+}
+
+// - - - - - - - - - - - -Main - - - - - - - - - - - - - -
+window.onload = main
+
+function main() {
+   iniateMap();
+   
 }
