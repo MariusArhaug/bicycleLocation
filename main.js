@@ -133,9 +133,13 @@ var emptyIcon = L.Icon.extend({
 function highlightMarker(station) {
       station.click();
       if (station.isActive() == true) {
-         station.marker.setIcon(new activeIcon)
+         station.marker.setIcon(new activeIcon);
+
       } else {
          station.marker.setIcon(new normalIcon)
+         stationArray
+            .filter(object => object.station_id != station.station_id && object.num_bikes_available > 0)
+            .forEach(object => object.marker.setIcon(new normalIcon));
       }
 }
 
