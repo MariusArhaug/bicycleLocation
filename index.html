@@ -1,18 +1,23 @@
 <!DOCTYPE html>
 <html>
 <head>
-   	<title>Marker Custom Icons Example</title>
+   	<title>Oslo's Bicycle Stations</title>
     <link rel = "stylesheet" href = "http://cdn.leafletjs.com/leaflet-0.7.3/leaflet.css"/>
     <script src = "http://cdn.leafletjs.com/leaflet-0.7.3/leaflet.js"></script>
    	<script src="main.js"></script>
    	<link rel="stylesheet" href="style.css"/>
 </head>
 <body>
-	<header>Bicycle Locations</header>
+	<header>Oslo's Bicycle Stations</header>
 	<div id="map"></div>
 	<div id="station_info">
 		<div id="station">
-
+		</div>
+		<div id="station_selector">
+			<h3>Select station:</h3>
+			<select id="select" onchange="dropdownChange(this.value)">
+				
+			</select>
 		</div>
 	</div>
 <body>

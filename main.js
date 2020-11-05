@@ -3,113 +3,154 @@
 var map;
 function iniateMap() {
    var mapOptions = {
-      center: [59.911491, 10.757933], 
+      center: [59.911491, 10.757933],  //"center" of oslo
       zoom: 15
    }
    map = new L.map('map', mapOptions);
 
-   var layer = new L.TileLayer('http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png');
+   var layer = new L.TileLayer('http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'); 
    map.addLayer(layer);
-
+   map.addEventListener('mousedown',  () => globalStationArray.forEach(e => e.setInactive()));
 }
-// - - - - - - - - - - - - MARKERS - - - - - - - - - - - -
+// - - - - - - - - - - - - Classes - - - - - - - - - - - -
 
-
-
+//init class with usefull methods, this class will get other properties from json file
 class Station {
    constructor(name, id) {
       this.name = name;
       this.station_id = id;
       this.active = false;
       this.marker = undefined
+      this.empty = false;
    }
 
    isActive() {
-      return this.active
+      return this.active;
    }
 
-   click() {
-      if (this.active == false) {
-         this.active = true;
-      }
-      else if (this.active == true) {
-         this.active = false;   
-      }
+   isEmpty() {
+      return this.empty;
+   }
+
+   setEmpty(bool) {
+      this.empty = bool
+   }
+
+   setInactive() {
+      this.active = false;
+      this.changeIcon();
+      this.marker.closePopup()
+   }
+
+   click(bool) {
+      this.active = bool | !this.active;
+      this.changeIcon();
    }
 
    setMarker(marker) {
       this.marker = marker;
    }
+
+   changeIcon() {
+      if (this.empty) {
+         this.marker.setIcon(new emptyIcon);   
+      } else {
+         this.marker.setIcon(this.active ? new activeIcon : new normalIcon);
+      }
+      
+   }
+
 }
 
-
-var stationArray = []
-//1
-async function addStationInfo() {
-   let stationUrl = 'https://gbfs.urbansharing.com/oslobysykkel.no/station_information.json';
-   fetch(stationUrl)
-   .then(res => res.json())
-   .then((out) => {
-      out.data.stations
-         .forEach(station => {
-            let newStation = Object.assign(new Station, station);
-            stationArray.push(newStation);
+// - - - - - - - - - - Read JSONs - - - - - - - - - 
+//read json files then send as object, object is inhertinted from Station class
+//but also gets properties from station in the json file
+function readJSON(url) {
+   const promise = new Promise((resolve, reject) => {
+      fetch(url)
+         .then(res => res.json())
+         .then((out) => {
+            resolve (out.data.stations.map(station => Object.assign(new Station, station)))    
          })
+         .catch(err => {reject (err)});
+   })
+   return promise;
+}
+
+//makes sure that the files get read in the right order
+//get info from url
+//return as object with two properties, being the two arrays.
+ async function computeStations() {
+   let bicycleAvailability = 'https://gbfs.urbansharing.com/oslobysykkel.no/station_status.json'
+   let stationUrl = 'https://gbfs.urbansharing.com/oslobysykkel.no/station_information.json';
+   let bicycleInfo = [];
+   let stationInfo = [];
+   await readJSON(stationUrl).then(res => stationInfo = res);
+   await readJSON(bicycleAvailability).then(res => bicycleInfo = res);
+   
+   return {bicycles: bicycleInfo, 
+            stations: stationInfo};
+ }
+
+
+//combine arrays and assign properties to a final object in a final array
+function combineArrays(bicylceArray, stationArray) {
+   let finalArray = []
+   stationArray.forEach(station => {
+      bicylceArray.forEach( bicycle => {
+         if (station.station_id == bicycle.station_id) {
+            finalArray.push(Object.assign(bicycle, station))
+         }
+      })
      
    })
-   .catch(err => { throw err });
-  
-
+   return finalArray;
 }
 
-//2
-async function addBicycleInfo() {
-   let bicycleAvailability = 'https://gbfs.urbansharing.com/oslobysykkel.no/station_status.json'
-   fetch(bicycleAvailability)
-      .then(res => res.json())
-      .then((out) => {
-         out.data.stations
-            .forEach(jsonData => {
-               stationArray
-               .filter(station => station.station_id == jsonData.station_id)
-               .map(station => Object.assign(station, jsonData))
-         })
-      })
+// - - - - - - - - - - - - - - - Markers - - - - - - 
 
-      .catch(err => {throw err});
-}
-
-
-function addMarkersToMap() {
+//assign a marker to have a relation to equivalent object in array
+function addMarkersToMap(array) {
    let fixedMarkerOptions = {
-      title: "Station",
+      title: "",
       clickable: true,
       draggable: false,
       id: undefined,
       popupAnchor: [1, -34],
    }
-   stationArray.forEach(station => {
+   //give methods and events
+   array.forEach(station => {
          fixedMarkerOptions.id = station.station_id;
+         fixedMarkerOptions.id = station.name
          let marker = L.marker([station.lat, station.lon], fixedMarkerOptions)
-         station.setMarker(marker);
 
-         marker.bindPopup(station.name).openPopup();
+         marker.bindPopup(station.name);
+         marker.addEventListener('mouseover', () => marker.openPopup());
+         marker.addEventListener('mouseout', () => marker.closePopup());
+
          marker.addEventListener('click', () => {
             showStationInfo(station);
             highlightMarker(station);   
          });
+
          marker.addTo(map)
+         station.setMarker(marker);
       }
    );
-   stationArray.filter(station => station.num_bikes_available == 0).forEach(station => station.marker.setIcon(new emptyIcon));
-
+   //change color of those stations that have no bikes available
+   array.filter(station => station.num_bikes_available == 0).map(station => {
+      station.setEmpty(true);
+      station.marker.setIcon(new emptyIcon);
+   });
 }
 
-// - - - - - - -
+// - - - - - - - Highlights - - - - - - - - //
 
+//some static data about the icons
 var normalIcon = L.Icon.extend({
    options: {
       iconUrl: "marker-icon.png",
+      shadowUrl: 'marker-shadow.png',
       popupAnchor: [1, -34],
    }
 });
@@ -117,6 +158,7 @@ var normalIcon = L.Icon.extend({
 var activeIcon = L.Icon.extend({
    options: {
       iconUrl: "marker-icon-active.png",
+      shadowUrl: 'marker-shadow.png',
       popupAnchor: [1, -34],
    }
 });
@@ -124,30 +166,26 @@ var activeIcon = L.Icon.extend({
 var emptyIcon = L.Icon.extend({
    options: {
       iconUrl: "marker-icon-empty.png",
+      shadowUrl: 'marker-shadow.png',
       popupAnchor: [1, -34],
    }
 })
 
-
-
+//change color of clicked marker
 function highlightMarker(station) {
-      station.click();
-      if (station.isActive() == true) {
-         station.marker.setIcon(new activeIcon);
+      globalStationArray
+            .filter(object => object.station_id != station.station_id)
+            .forEach(object => object.setInactive());
 
-      } else {
-         station.marker.setIcon(new normalIcon)
-         stationArray
-            .filter(object => object.station_id != station.station_id && object.num_bikes_available > 0)
-            .forEach(object => object.marker.setIcon(new normalIcon));
-      }
+      station.click();  
 }
 
 
 // - - - - - - - - - - - -Station Info - - - - - - - - - - 
-
+//add HTML to display info about selected station
+//Its easy to add more info in the html if its desired
 function showStationInfo(station) {
-   let div = document.getElementById('station_info');
+   let div = document.getElementById('station');
    div.innerText = ""
 
    let h2 = document.createElement("h3");
@@ -161,14 +199,46 @@ function showStationInfo(station) {
    div.appendChild(h2);
    div.appendChild(p1);
    div.appendChild(p2);
-
-   let string = "	<h2>Name: </h2> <p>Available bikes: </p> <p>Free spots: </p>"
 }
 
+//update select tag to include options with info about the various stations
+function addOptions(array) {
+   let select = document.getElementById('select');
+   array
+   .filter(e => !e.isEmpty())
+   .forEach((e) => {
+      let option = document.createElement('option');
+      option.value = e.station_id;
+      option.text = e.name;
+      select.appendChild(option);
+   })
+}
+//when a change occurs in the select tag, change the HTML with station info
+function dropdownChange(e) {
+   console.log(e);
+   globalStationArray
+      .filter(station => station.station_id == e)
+      .map(station => {
+         highlightMarker(station);
+
+         map.panTo(new L.LatLng(station.lat, station.lon));
+         showStationInfo(station)
+      })
+}
+
+
 // - - - - - - - - - - - -Main - - - - - - - - - - - - - -
+//main method to start the js document,
+//computeStations() is async and therefor we need to make sure that it finishes first before we can add markers and such
+var globalStationArray = [];
 window.onload = main
 
 function main() {
    iniateMap();
-   
+   computeStations()
+   .then(obj => {
+      globalStationArray = combineArrays(obj.bicycles, obj.stations)
+      addMarkersToMap(globalStationArray)
+      addOptions(globalStationArray);
+   });
 }
