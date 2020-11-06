@@ -120,18 +120,18 @@ function addMarkersToMap(array) {
    //give methods and events
    array.forEach(station => {
          fixedMarkerOptions.id = station.station_id;
-         fixedMarkerOptions.title = station.name
+         fixedMarkerOptions.title = station.name;
          let marker = L.marker([station.lat, station.lon], fixedMarkerOptions)
 
+         //display station name in pop and change color of marker if popup is closed
          marker.bindPopup(station.name);
-         //marker.addEventListener('mouseover', () => marker.openPopup());
-         //marker.addEventListener('mouseout', () => marker.closePopup());
-
+         marker.addEventListener('popupclose', () => station.setInactive(false));
          marker.addEventListener('click', () => {
             showStationInfo(station);
             highlightMarker(station);   
          });
 
+         //add to map and make marker have a relation to the station object
          marker.addTo(map)
          station.setMarker(marker);
       }
@@ -227,7 +227,6 @@ function dropdownChange(e) {
       .filter(station => station.station_id == e)
       .map(station => {
          highlightMarker(station);
-
          map.panTo(new L.LatLng(station.lat, station.lon));
          showStationInfo(station)
       })
