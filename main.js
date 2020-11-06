@@ -2,15 +2,15 @@
 // - - - - - - - - - - - - MAP - - - - - - - - - - - -
 var map;
 function iniateMap() {
-   var mapOptions = {
+   let mapOptions = {
       center: [59.911491, 10.757933],  //"center" of oslo
       zoom: 15
    }
    map = new L.map('map', mapOptions);
 
-   var layer = new L.TileLayer('http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'); 
+   let layer = new L.TileLayer('http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'); 
    map.addLayer(layer);
-   map.addEventListener('mousedown',  () => globalStationArray.forEach(e => e.setInactive()));
+   //map.addEventListener('mousedown',  () => globalStationArray.forEach(e => e.setInactive()));
 }
 // - - - - - - - - - - - - Classes - - - - - - - - - - - -
 
@@ -81,12 +81,12 @@ function readJSON(url) {
 //get info from url
 //return as object with two properties, being the two arrays.
  async function computeStations() {
-   let bicycleAvailability = 'https://gbfs.urbansharing.com/oslobysykkel.no/station_status.json'
+   let bicycleAvailabilityUrl = 'https://gbfs.urbansharing.com/oslobysykkel.no/station_status.json'
    let stationUrl = 'https://gbfs.urbansharing.com/oslobysykkel.no/station_information.json';
    let bicycleInfo = [];
    let stationInfo = [];
    await readJSON(stationUrl).then(res => stationInfo = res);
-   await readJSON(bicycleAvailability).then(res => bicycleInfo = res);
+   await readJSON(bicycleAvailabilityUrl).then(res => bicycleInfo = res);
    
    return {bicycles: bicycleInfo, 
             stations: stationInfo};
@@ -121,7 +121,7 @@ function addMarkersToMap(array) {
    //give methods and events
    array.forEach(station => {
          fixedMarkerOptions.id = station.station_id;
-         fixedMarkerOptions.id = station.name
+         fixedMarkerOptions.title = station.name
          let marker = L.marker([station.lat, station.lon], fixedMarkerOptions)
 
          marker.bindPopup(station.name);
@@ -138,10 +138,12 @@ function addMarkersToMap(array) {
       }
    );
    //change color of those stations that have no bikes available
-   array.filter(station => station.num_bikes_available == 0).map(station => {
-      station.setEmpty(true);
-      station.marker.setIcon(new emptyIcon);
-   });
+   array
+      .filter(station => station.num_bikes_available == 0)
+      .map(station => {
+         station.setEmpty(true);
+         station.marker.setIcon(new emptyIcon);
+      });
 }
 
 // - - - - - - - Highlights - - - - - - - - //
@@ -174,8 +176,8 @@ var emptyIcon = L.Icon.extend({
 //change color of clicked marker
 function highlightMarker(station) {
       globalStationArray
-            .filter(object => object.station_id != station.station_id)
-            .forEach(object => object.setInactive());
+            .filter(e => e.station_id != station.station_id)
+            .forEach(e => e.setInactive());
 
       station.click();  
 }
@@ -215,7 +217,6 @@ function addOptions(array) {
 }
 //when a change occurs in the select tag, change the HTML with station info
 function dropdownChange(e) {
-   console.log(e);
    globalStationArray
       .filter(station => station.station_id == e)
       .map(station => {
