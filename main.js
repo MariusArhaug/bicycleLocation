@@ -1,7 +1,7 @@
 
 // - - - - - - - - - - - - MAP - - - - - - - - - - - -
 var map;
-function iniateMap() {
+function initiateMap() {
    let mapOptions = {
       center: [59.911491, 10.757933],  //"center" of oslo
       zoom: 15
@@ -136,7 +136,7 @@ function addMarkersToMap(array) {
          station.setMarker(marker);
       }
    );
-   //change color of those stations that have no bikes available
+   //change marker color to red for those stations that have no bikes available
    array
       .filter(station => station.num_bikes_available == 0)
       .map(station => {
@@ -176,7 +176,7 @@ var emptyIcon = L.Icon.extend({
 function highlightMarker(station) {
       globalStationArray
             .filter(e => e.station_id != station.station_id)
-            .forEach(e => e.setInactive());
+            .forEach(e => e.setInactive(false));
 
       station.click();  
 }
@@ -240,7 +240,7 @@ var globalStationArray = [];
 window.onload = main
 
 function main() {
-   iniateMap();
+   initiateMap();
    computeStations()
    .then(obj => {
       globalStationArray = combineArrays(obj.bicycles, obj.stations)
