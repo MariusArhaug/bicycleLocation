@@ -10,7 +10,7 @@ def highestProduct(listA):
         if integer < 0:
             count += 1
     if (count == length):
-        return "Cannot find biggest triplet in a list with only"
+        return "Cannot find biggest triplet in a list with only negative numbers!"
  
     #find triplet with two biggest negative numbers = positive * biggest positive number
     biggestNegative = listA[0] * listA[1] * listA[length-1]
@@ -24,7 +24,7 @@ def highestProduct(listA):
 listA = [1,10,2,5,6,3]
 print(highestProduct(listA))
 
-listB = [50,20,1,-25,-25,-25]
+listB = [-50,-20,-1,-25,-25,-25]
 print(highestProduct(listB))
 #print(highestProduct(listB,3))
 
