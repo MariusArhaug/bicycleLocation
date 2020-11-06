@@ -62,7 +62,7 @@ class Station {
 }
 
 // - - - - - - - - - - Read JSONs - - - - - - - - - 
-//read json files then send as object, object is inhertinted from Station class
+//read json files then send as object, object is inherited from Station class
 //but also gets properties from station in the json file
 function readJSON(url) {
    const promise = new Promise((resolve, reject) => {
