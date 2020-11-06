@@ -10,7 +10,6 @@ function iniateMap() {
 
    let layer = new L.TileLayer('http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'); 
    map.addLayer(layer);
-   //map.addEventListener('mousedown',  () => globalStationArray.forEach(e => e.setInactive()));
 }
 // - - - - - - - - - - - - Classes - - - - - - - - - - - -
 
@@ -125,8 +124,8 @@ function addMarkersToMap(array) {
          let marker = L.marker([station.lat, station.lon], fixedMarkerOptions)
 
          marker.bindPopup(station.name);
-         marker.addEventListener('mouseover', () => marker.openPopup());
-         marker.addEventListener('mouseout', () => marker.closePopup());
+         //marker.addEventListener('mouseover', () => marker.openPopup());
+         //marker.addEventListener('mouseout', () => marker.closePopup());
 
          marker.addEventListener('click', () => {
             showStationInfo(station);
@@ -188,7 +187,14 @@ function highlightMarker(station) {
 //Its easy to add more info in the html if its desired
 function showStationInfo(station) {
    let div = document.getElementById('station');
-   div.innerText = ""
+   div.innerText = "";
+   
+   let sel = document.getElementById('select');
+   let opts = Array.prototype.slice.call(sel.options);
+   
+   opts
+      .filter(e => e.value == station.station_id)
+      .map((e) => sel.selectedIndex = opts.indexOf(e));
 
    let h2 = document.createElement("h3");
    let p1 = document.createElement("p");
@@ -207,7 +213,7 @@ function showStationInfo(station) {
 function addOptions(array) {
    let select = document.getElementById('select');
    array
-   .filter(e => !e.isEmpty())
+   .sort((a,b) => a.name.localeCompare(b.name))
    .forEach((e) => {
       let option = document.createElement('option');
       option.value = e.station_id;
@@ -239,7 +245,7 @@ function main() {
    computeStations()
    .then(obj => {
       globalStationArray = combineArrays(obj.bicycles, obj.stations)
-      addMarkersToMap(globalStationArray)
+      addMarkersToMap(globalStationArray);
       addOptions(globalStationArray);
    });
 }
